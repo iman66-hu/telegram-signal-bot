@@ -1,6 +1,6 @@
 import requests
 
-BOT_TOKEN = "YOUR_BOT_TOKEN"
+BOT_TOKEN ="8848229995:AAHZhAYM-lbNRi8ro_6Ww3vnTHd0i6xtano"
 CHAT_ID = "8430812593"
 
 text = """✅ ربات با موفقیت فعال شد
