@@ -1,4 +1,4 @@
-import requestsimport os
+import os
 import requests
 import pandas as pd
 import numpy as np
