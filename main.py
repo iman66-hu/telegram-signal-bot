@@ -72,8 +72,7 @@ def get_klines(symbol):
     df["low"] = df["low"].astype(float)
 
     return df
-    def rma(series, length):
-
+ def rma(series, length):
     alpha = 1 / length
 
     out = [series.iloc[0]]
