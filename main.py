@@ -1,13 +1,12 @@
-import os
-import requests
-import pandas as pd
-import numpy as np
-from ta.trend import EMAIndicator
-import time
+def send_telegram(text):
+    print("BOT_TOKEN =", BOT_TOKEN)
+    print("CHAT_ID =", CHAT_ID)
 
-BOT_TOKEN = os.getenv("BOT_TOKEN")
-CHAT_ID = os.getenv("CHAT_ID")
-
+    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+    requests.post(url, data={
+        "chat_id": CHAT_ID,
+        "text": text
+    })
 SYMBOLS = [
     "BTCUSDT","ETHUSDT","BNBUSDT","SOLUSDT","XRPUSDT",
     "DOGEUSDT","ADAUSDT","TRXUSDT","LINKUSDT","AVAXUSDT",
