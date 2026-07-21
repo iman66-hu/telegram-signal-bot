@@ -1,12 +1,11 @@
-def send_telegram(text):
-    print("BOT_TOKEN =", BOT_TOKEN)
-    print("CHAT_ID =", CHAT_ID)
+import os
+import requests
+import pandas as pd
+import numpy as np
+import time
 
-    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
-    requests.post(url, data={
-        "chat_id": CHAT_ID,
-        "text": text
-    })
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+CHAT_ID = os.getenv("CHAT_ID")
 SYMBOLS = [
     "BTCUSDT","ETHUSDT","XRPUSDT","BNBUSDT","SOLUSDT","DOGEUSDT","TRXUSDT","ADAUSDT","LINKUSDT","HYPEUSDT",
     "BCHUSDT","SUIUSDT","XLMUSDT","HBARUSDT","AVAXUSDT","LTCUSDT","TONUSDT","SHIBUSDT","DOTUSDT","UNIUSDT",
