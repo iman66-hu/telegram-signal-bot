@@ -1,8 +1,6 @@
 import requests
-
-BOT_TOKEN ="8848229995:AAHZhAYM-lbNRi8ro_6Ww3vnTHd0i6xtano"
-CHAT_ID = "8430812593"
-import os
+BOT_TOKEN = os.getenv8848229995:AAGPTk8rByw96JDp2cdU_EnE8ihWUf5v4rE
+CHAT_ID = os.getenv8430812593
 import requests
 import pandas as pd
 import numpy as np
