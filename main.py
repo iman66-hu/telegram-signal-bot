@@ -8,28 +8,19 @@ def send_telegram(text):
         "text": text
     })
 SYMBOLS = [
-    "BTCUSDT","ETHUSDT","BNBUSDT","SOLUSDT","XRPUSDT",
-    "DOGEUSDT","ADAUSDT","TRXUSDT","LINKUSDT","AVAXUSDT",
-    "SUIUSDT","LTCUSDT","BCHUSDT","DOTUSDT","UNIUSDT",
-    "AAVEUSDT","ETCUSDT","XLMUSDT","HBARUSDT","FILUSDT",
-    "ATOMUSDT","NEARUSDT","APTUSDT","OPUSDT","ARBUSDT",
-    "INJUSDT","SEIUSDT","TONUSDT","PEPEUSDT","SHIBUSDT",
-    "ICPUSDT","MKRUSDT","RENDERUSDT","FETUSDT","WIFUSDT",
-    "BONKUSDT","JUPUSDT","TIAUSDT","RUNEUSDT","GRTUSDT",
-    "ALGOUSDT","VETUSDT","FLOWUSDT","EOSUSDT","EGLDUSDT",
-    "SANDUSDT","MANAUSDT","THETAUSDT","XTZUSDT","KASUSDT"
+    "BTCUSDT","ETHUSDT","XRPUSDT","BNBUSDT","SOLUSDT","DOGEUSDT","TRXUSDT","ADAUSDT","LINKUSDT","HYPEUSDT",
+    "BCHUSDT","SUIUSDT","XLMUSDT","HBARUSDT","AVAXUSDT","LTCUSDT","TONUSDT","SHIBUSDT","DOTUSDT","UNIUSDT",
+    "PEPEUSDT","AAVEUSDT","TAOUSDT","APTUSDT","ONDOUSDT","ICPUSDT","ETCUSDT","POLUSDT","NEARUSDT","KASUSDT",
+    "RENDERUSDT","MNTUSDT","VETUSDT","ALGOUSDT","ATOMUSDT","FILUSDT","ARBUSDT","OPUSDT","INJUSDT","SEIUSDT",
+    "TIAUSDT","JUPUSDT","FETUSDT","BONKUSDT","WLDUSDT","ENAUSDT","IMXUSDT","SANDUSDT","MANAUSDT","GRTUSDT",
+    "THETAUSDT","FLOWUSDT","EOSUSDT","XTZUSDT","EGLDUSDT","QNTUSDT","MKRUSDT","RUNEUSDT","PYTHUSDT","JASMYUSDT",
+    "CRVUSDT","LDOUSDT","PENDLEUSDT","BRETTUSDT","STXUSDT","AXSUSDT","CHZUSDT","DYDXUSDT","ZECUSDT","COMPUSDT",
+    "SNXUSDT","1INCHUSDT","CAKEUSDT","KAVAUSDT","APEUSDT","GMTUSDT","BLURUSDT","ZROUSDT","ENSUSDT","GALAUSDT"
 ]
 
 INTERVAL = "15m"
 LIMIT = 300
 
-
-def send_telegram(text):
-    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
-    requests.post(url, data={
-        "chat_id": CHAT_ID,
-        "text": text
-    })
 
 
 def get_klines(symbol):
@@ -50,7 +41,7 @@ def get_klines(symbol):
     df["close"] = df["close"].astype(float)
     df["high"] = df["high"].astype(float)
     df["low"] = df["low"].astype(float)
-return df
+    return df
 
 def rma(series, length):
     alpha = 1 / length
@@ -112,7 +103,8 @@ def signal(df):
         return "SELL"
 
     return None
-    def main():
+
+def main():
 
     sent = set()
 
@@ -137,15 +129,15 @@ def signal(df):
             price = round(df["close"].iloc[-1], 4)
 
             msg = f"""
-🚨 {sig}
+ًںڑ¨ {sig}
 
-📌 {symbol}
+ًں“Œ {symbol}
 
-⏰ TimeFrame : 15m
+âڈ° TimeFrame : 15m
 
-💰 Price : {price}
+ًں’° Price : {price}
 
-📡 Strategy :
+ًں“، Strategy :
 Range Filter + RMA200
 """
 
