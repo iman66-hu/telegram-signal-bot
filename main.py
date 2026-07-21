@@ -50,12 +50,11 @@ def get_klines(symbol):
     df["close"] = df["close"].astype(float)
     df["high"] = df["high"].astype(float)
     df["low"] = df["low"].astype(float)
+return df
 
-    return df
-    def rma(series, length):
+def rma(series, length):
     alpha = 1 / length
     out = [series.iloc[0]]
-
     for i in range(1, len(series)):
         out.append(alpha * series.iloc[i] + (1 - alpha) * out[-1])
 
