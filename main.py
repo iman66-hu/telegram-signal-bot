@@ -71,7 +71,8 @@ def get_klines(symbol):
     df["high"] = df["high"].astype(float)
     df["low"] = df["low"].astype(float)
 
-    return dfdef rma(series, length):
+    return df
+    def rma(series, length):
 
     alpha = 1 / length
 
@@ -155,7 +156,8 @@ def signal(df):
     if sell:
         return "SELL"
 
-    return Nonedef main():
+    return None
+    def main():
 
     sent = set()
 
