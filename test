@@ -1,0 +1,12 @@
+import requests
+
+BOT_TOKEN = "8848229995:AAGPTk8rByw96JDp2cdU_EnE8ihWUf5v4rE"
+CHAT_ID = "8430812593"
+
+def send_test():
+    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+    msg = "🧪 تست ربات\n\nبات با موفقیت کار می‌کنه ✅\n\nاگر این پیام رو دیدی یعنی همه چیز آماده است!"
+    requests.post(url, data={"chat_id": CHAT_ID, "text": msg})
+
+send_test()
+print("تست ارسال شد! لطفاً ربات رو چک کن.")
