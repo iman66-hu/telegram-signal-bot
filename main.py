@@ -62,7 +62,7 @@ def get_klines(symbol):
     if len(data) < 210:
         return None
 
-    df = pd.DataFrame(data, columns=[
+     df = pd.DataFrame(data, columns=[
         "time","open","high","low","close","volume",
         "ct","qv","n","tb","tq","i"
     ])
@@ -72,12 +72,17 @@ def get_klines(symbol):
     df["low"] = df["low"].astype(float)
 
     return df
- def rma(series, length):
+
+
+def rma(series, length):
     alpha = 1 / length
 
     out = [series.iloc[0]]
 
     for i in range(1, len(series)):
+        out.append(alpha * series.iloc[i] + (1 - alpha) * out[-1])
+
+    return pd.Series(out, index=series.index)
         out.append(alpha * series.iloc[i] + (1 - alpha) * out[-1])
 
     return pd.Series(out, index=series.index)
