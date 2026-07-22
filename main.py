@@ -1,4 +1,3 @@
-import os
 import time
 import requests
 import pandas as pd
@@ -39,11 +38,7 @@ def send_telegram(text):
 
 def get_klines(symbol):
     url = "https://fapi.binance.com/fapi/v1/klines"
-    params = {
-        "symbol": symbol,
-        "interval": INTERVAL,
-        "limit": LIMIT
-    }
+    params = {"symbol": symbol, "interval": INTERVAL, "limit": LIMIT}
     try:
         r = requests.get(url, params=params, timeout=20)
         if r.status_code != 200:
@@ -53,10 +48,7 @@ def get_klines(symbol):
         if not isinstance(data, list) or len(data) < 210:
             return None
         
-        df = pd.DataFrame(data, columns=[
-            "time", "open", "high", "low", "close", "volume",
-            "ct", "qv", "n", "tb", "tq", "i"
-        ])
+        df = pd.DataFrame(data, columns=["time","open","high","low","close","volume","ct","qv","n","tb","tq","i"])
         df["close"] = df["close"].astype(float)
         df["high"] = df["high"].astype(float)
         df["low"] = df["low"].astype(float)
@@ -66,7 +58,6 @@ def get_klines(symbol):
         return None
 
 def rma(series, length):
-    """Rolling Moving Average (Wilder's)"""
     return series.ewm(alpha=1/length, adjust=False).mean()
 
 def smoothrng(x, t=100, m=3.0):
@@ -80,4 +71,68 @@ def rngfilt(price, rng):
     for i in range(1, len(price)):
         if price.iloc[i] > filt[i - 1]:
             filt[i] = max(filt[i - 1], price.iloc[i] - rng.iloc[i])
-        else
+        else:
+            filt[i] = min(filt[i - 1], price.iloc[i] + rng.iloc[i])
+    return pd.Series(filt, index=price.index)
+
+def signal(df):
+    if df is None or len(df) < 210:
+        return None
+    
+    src = df["close"]
+    rma200 = rma(src, 200)
+    smrng = smoothrng(src, 100, 3.0)
+    filt = rngfilt(src, smrng)
+
+    if pd.isna(filt.iloc[-1]) or pd.isna(rma200.iloc[-1]):
+        return None
+
+    buy = (filt.iloc[-2] < rma200.iloc[-2]) and (filt.iloc[-1] > rma200.iloc[-1])
+    sell = (filt.iloc[-2] > rma200.iloc[-2]) and (filt.iloc[-1] < rma200.iloc[-1])
+
+    if buy:
+        return "BUY"
+    elif sell:          # اینجا اصلاح شد
+        return "SELL"
+    return None
+
+def main():
+    print(f"🔍 Starting scan on {len(SYMBOLS)} symbols | TF: {INTERVAL}")
+    sent = set()
+    
+    for symbol in SYMBOLS:
+        try:
+            df = get_klines(symbol)
+            if df is None or df.empty:
+                continue
+                
+            sig = signal(df)
+            if sig is None:
+                continue
+                
+            key = f"{symbol}_{sig}"
+            if key in sent:
+                continue
+                
+            sent.add(key)
+            price = round(float(df["close"].iloc[-1]), 4)
+            
+            msg = (
+                f"🚨 <b>{sig} SIGNAL</b>\n\n"
+                f"📌 <b>{symbol}</b>\n"
+                f"⏰ Timeframe: {INTERVAL}\n"
+                f"💰 Price: <b>{price}</b>\n\n"
+                f"📡 Strategy: Range Filter + RMA200"
+            )
+            
+            send_telegram(msg)
+            print(f"✅ {symbol} → {sig} @ {price}")
+            time.sleep(0.4)
+            
+        except Exception as e:
+            print(f"❌ {symbol} ERROR: {e}")
+    
+    print("🏁 Scan Finished")
+
+if __name__ == "__main__":
+    main()
