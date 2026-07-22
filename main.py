@@ -12,22 +12,24 @@ LIMIT = 300
 # ==================== ۱۰۰ ارز برتر ====================
 SYMBOLS = [
     "BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT", "XRPUSDT", "DOGEUSDT", "TONUSDT", "ADAUSDT",
-    "TRXUSDT", "AVAXUSDT", "SHIBUSDT", "LINKUSDT", "SUIUSDT", "DOTUSDT", "LEOUSDT", "LTCUSDT",
-    "BCHUSDT", "UNIUSDT", "PEPEUSDT", "NEARUSDT", "KASUSDT", "APTUSDT", "ICPUSDT", "XLMUSDT",
-    "FETUSDT", "HBARUSDT", "ETCUSDT", "RENDERUSDT", "FILUSDT", "ATOMUSDT", "CROUSDT", "POLUSDT",
-    "INJUSDT", "XMRUSDT", "TAOUSDT", "VETUSDT", "OPUSDT", "ARBUSDT", "MNTUSDT", "STXUSDT",
-    "IMXUSDT", "BONKUSDT", "FLRUSDT", "WIFUSDT", "GRTUSDT", "AAVEUSDT", "THETAUSDT", "RUNEUSDT",
-    "ALGOUSDT", "MKRUSDT", "SEIUSDT", "JUPUSDT", "FTMUSDT", "TIAUSDT", "LDOUSDT", "ONDOUSDT",
-    "PYTHUSDT", "FLOWUSDT", "EOSUSDT", "QNTUSDT", "AXLUSDT", "SANDUSDT", "EGLDUSDT", "MANAUSDT",
-    "SNXUSDT", "XTZUSDT", "DYDXUSDT", "RAYUSDT", "KCSUSDT", "ROSEUSDT", "ENSUSDT", "GALAUSDT",
-    "ZECUSDT", "MINAUSDT", "NEOUSDT", "CFXUSDT", "PENDLEUSDT", "KAVAUSDT", "CHZUSDT", "COMPUSDT",
-    "CRVUSDT", "1INCHUSDT", "ZROUSDT", "WLDUSDT", "APEUSDT", "BLURUSDT", "GMTUSDT", "LUNCUSDT",
-    "AKTUSDT", "HOTUSDT", "ZILUSDT", "ENJUSDT", "CAKEUSDT", "MASKUSDT", "RSRUSDT", "CVXUSDT",
-    "ANKRUSDT", "WAVESUSDT", "IOSTUSDT", "QTUMUSDT"
+    "TRXUSDT", "AVAXUSDT", "SHIBUSDT", "LINKUSDT", "SUIUSDT", "DOTUSDT", "LTCUSDT", "BCHUSDT",
+    "UNIUSDT", "PEPEUSDT", "NEARUSDT", "APTUSDT", "ICPUSDT", "XLMUSDT", "FETUSDT", "HBARUSDT",
+    "ETCUSDT", "RENDERUSDT", "FILUSDT", "ATOMUSDT", "INJUSDT", "XMRUSDT", "VETUSDT", "OPUSDT",
+    "ARBUSDT", "STXUSDT", "IMXUSDT", "BONKUSDT", "WIFUSDT", "GRTUSDT", "AAVEUSDT", "THETAUSDT",
+    "RUNEUSDT", "ALGOUSDT", "MKRUSDT", "SEIUSDT", "JUPUSDT", "FTMUSDT", "TIAUSDT", "LDOUSDT",
+    "ONDOUSDT", "PYTHUSDT", "FLOWUSDT", "EOSUSDT", "QNTUSDT", "SANDUSDT", "EGLDUSDT", "MANAUSDT",
+    "SNXUSDT", "XTZUSDT", "DYDXUSDT", "ROSEUSDT", "ENSUSDT", "GALAUSDT", "ZECUSDT", "NEOUSDT",
+    "CFXUSDT", "PENDLEUSDT", "KAVAUSDT", "CHZUSDT", "COMPUSDT", "CRVUSDT", "1INCHUSDT", "ZROUSDT",
+    "WLDUSDT", "APEUSDT", "BLURUSDT", "GMTUSDT", "HOTUSDT", "ZILUSDT", "ENJUSDT", "CAKEUSDT",
+    "MASKUSDT", "RSRUSDT", "ANKRUSDT", "WAVESUSDT", "IOSTUSDT", "QTUMUSDT", "KASUSDT", "TAOUSDT",
+    "MNTUSDT", "POLUSDT", "CROUSDT", "FLRUSDT", "RAYUSDT", "KCSUSDT", "MINAUSDT", "AKTUSDT",
+    "CVXUSDT", "LUNCUSDT"
 ]
 
 HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36"
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
+    "Accept": "application/json",
+    "Referer": "https://www.weex.com/",
 }
 
 # ================================================
@@ -39,37 +41,32 @@ def send_telegram(text):
         pass
 
 def get_klines(symbol):
-    url = "https://api.bybit.com/v5/market/kline"
+    url = "https://api-contract.weex.com/capi/v2/market/candles"
     params = {
-        "category": "linear",
-        "symbol": symbol,
-        "interval": 15,
+        "symbol": f"cmt_{symbol.lower()}",
+        "granularity": "15m",
         "limit": LIMIT
     }
     try:
         r = requests.get(url, params=params, headers=HEADERS, timeout=20)
+        print(f"{symbol} → Status: {r.status_code}")
+        
         if r.status_code != 200:
-            print(f"HTTP {r.status_code} for {symbol}")
             return None
         
         data = r.json()
-        if data.get("retCode") != 0:
-            print(f"Bybit Error {symbol}: {data.get('retMsg')}")
+        if not isinstance(data, list) or len(data) < 200:
             return None
 
-        kline_list = data["result"]["list"]
-        if len(kline_list) < 200:
-            return None
-
-        df = pd.DataFrame(kline_list, columns=["time", "open", "high", "low", "close", "volume", "turnover"])
+        df = pd.DataFrame(data, columns=["time", "open", "high", "low", "close", "volume", "turnover"])
         df = df[["open", "high", "low", "close", "volume"]].astype(float)
-        df = df.iloc[::-1].reset_index(drop=True)  # مرتب کردن از قدیم به جدید
+        df = df.iloc[::-1].reset_index(drop=True)   # مرتب کردن از قدیمی به جدید
         return df
     except Exception as e:
-        print(f"Error fetching {symbol}: {e}")
+        print(f"Error {symbol}: {e}")
         return None
 
-# توابع استراتژی (تغییر نکرده)
+# توابع استراتژی
 def rma(series, length):
     return series.ewm(alpha=1/length, adjust=False).mean()
 
@@ -88,7 +85,7 @@ def rngfilt(price, rng):
             filt[i] = min(filt[i - 1], price.iloc[i] + rng.iloc[i])
     return pd.Series(filt, index=price.index)
 
-def signal(df, symbol):
+def signal(df):
     if df is None or len(df) < 210:
         return None
    
@@ -110,7 +107,7 @@ def signal(df, symbol):
     return None
 
 def main():
-    print(f"🔍 Starting scan on {len(SYMBOLS)} symbols | TF: {INTERVAL}")
+    print(f"🔍 Starting scan on {len(SYMBOLS)} symbols | TF: {INTERVAL} | WEEX")
     sent = set()
    
     for symbol in SYMBOLS:
@@ -119,7 +116,7 @@ def main():
             if df is None or df.empty:
                 continue
                
-            sig = signal(df, symbol)
+            sig = signal(df)
             if sig is None:
                 continue
                
@@ -135,12 +132,12 @@ def main():
                 f"📌 <b>{symbol}</b>\n"
                 f"⏰ Timeframe: {INTERVAL}\n"
                 f"💰 Price: <b>{price}</b>\n\n"
-                f"📡 Strategy: Range Filter + RMA200 (Bybit)"
+                f"📡 Exchange: WEEX | Strategy: Range Filter + RMA200"
             )
            
             send_telegram(msg)
             print(f"✅ {symbol} → {sig} @ {price}")
-            time.sleep(0.3)
+            time.sleep(0.4)
            
         except Exception as e:
             print(f"❌ {symbol} ERROR: {e}")
