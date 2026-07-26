@@ -27,14 +27,14 @@ def get_top_symbols(n=300):
     try:
         r = requests.get("https://open-api.bingx.com/openApi/swap/v2/quote/ticker", headers=HEADERS, timeout=20)
         data = r.json().get("data", [])
-        
+       
         usdt_pairs = [
             item for item in data
             if item["symbol"].endswith("-USDT")
             and not item["symbol"].startswith("NC")
             and float(item.get("quoteVolume", 0)) > 0
         ]
-        
+       
         usdt_pairs.sort(key=lambda x: float(x["quoteVolume"]), reverse=True)
         symbols = [item["symbol"] for item in usdt_pairs[:n]]
         print(f"✅ {len(symbols)} نماد برتر از BingX بارگذاری شد")
@@ -54,11 +54,11 @@ def get_klines(symbol, interval):
         r = requests.get(url, params=params, headers=HEADERS, timeout=20)
         if r.status_code != 200:
             return None
-        
+       
         data = r.json().get("data", [])
         if not isinstance(data, list) or len(data) < 210:
             return None
-        
+       
         df = pd.DataFrame(data)
         df = df[["open", "high", "low", "close", "volume"]].astype(float)
         df = df.iloc[::-1].reset_index(drop=True)  # قدیمی → جدید
@@ -96,17 +96,15 @@ def signal(df):
     filt = rngfilt(src, smrng)
 
     # چک کردن کراس روی دو کندل بسته‌شده (نه کندل جاری)
-    # این دقیقاً مثل "Once Per Bar Close" در تریدینگ‌ویو عمل می‌کنه
     if pd.isna(filt.iloc[-2]) or pd.isna(rma200.iloc[-2]) or pd.isna(filt.iloc[-3]) or pd.isna(rma200.iloc[-3]):
         return None, None
 
+    # فقط سیگنال خرید (کراس صعودی)
     buy = (filt.iloc[-3] < rma200.iloc[-3]) and (filt.iloc[-2] > rma200.iloc[-2])
-    sell = (filt.iloc[-3] > rma200.iloc[-3]) and (filt.iloc[-2] < rma200.iloc[-2])
 
     if buy:
         return "BUY", float(df["close"].iloc[-2])
-    elif sell:
-        return "SELL", float(df["close"].iloc[-2])
+
     return None, None
 
 def main():
@@ -132,10 +130,9 @@ def main():
                 key = f"{symbol}_{interval}_{sig}"
                 if key in sent:
                     continue
-
                 sent.add(key)
-                price = round(price, 6)
 
+                price = round(price, 6)
                 msg = (
                     f"🚨 <b>{sig} SIGNAL</b>\n\n"
                     f"📌 <b>{symbol}</b>\n"
@@ -143,11 +140,9 @@ def main():
                     f"💰 Price: <b>{price}</b>\n\n"
                     f"📡 Exchange: BingX | Strategy: Range Filter + RMA200"
                 )
-
                 send_telegram(msg)
                 print(f"✅ {symbol} | {interval} → {sig} @ {price}")
                 time.sleep(0.3)
-
             except Exception as e:
                 print(f"❌ {symbol} {interval} ERROR: {e}")
 
