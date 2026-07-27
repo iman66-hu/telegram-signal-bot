@@ -4,16 +4,10 @@ import pandas as pd
 import numpy as np
 
 # ==================== تنظیمات ====================
-BOT_TOKEN = "YOUR_BOT_TOKEN"          # توکن جدید بذار
-CHAT_ID   = "YOUR_CHAT_ID"            # چت آیدی جدید بذار
-
-INTERVALS = ["5m", "15m", "30m"]
-LIMIT = 300
-
-# پارامترهای استراتژی (بهینه‌شده)
-RMA_LEN = 120
-SMOOTH_PER = 60
-MULT = 2.8
+BOT_TOKEN = "8848229995:AAGPTk8rByw96JDp2cdU_EnE8ihWUf5v4rE"
+CHAT_ID   = "8430812593"
+INTERVALS = ["15m"]          # فقط تایم‌فریم ۱۵ دقیقه
+LIMIT     = 300
 # ================================================
 
 HEADERS = {
@@ -31,10 +25,148 @@ def send_telegram(text):
             timeout=15,
             headers=HEADERS
         )
-    except Exception as e:
-        print(f"خطا در ارسال تلگرام: {e}")
+    except Exception:
+        pass
 
 def get_top_symbols(n=300):
     try:
         r = requests.get(
-            "https://open-
+            "https://open-api.bingx.com/openApi/swap/v2/quote/ticker",
+            headers=HEADERS,
+            timeout=20
+        )
+        data = r.json().get("data", [])
+
+        usdt_pairs = [
+            item for item in data
+            if item["symbol"].endswith("-USDT")
+            and not item["symbol"].startswith("NC")
+            and float(item.get("quoteVolume", 0)) > 0
+        ]
+
+        usdt_pairs.sort(key=lambda x: float(x["quoteVolume"]), reverse=True)
+        symbols = [item["symbol"] for item in usdt_pairs[:n]]
+        print(f"✅ {len(symbols)} نماد برتر از BingX بارگذاری شد")
+        return symbols
+    except Exception as e:
+        print(f"❌ خطا در گرفتن لیست نمادها: {e}")
+        return []
+
+def get_klines(symbol, interval):
+    url = "https://open-api.bingx.com/openApi/swap/v3/quote/klines"
+    params = {
+        "symbol": symbol,
+        "interval": interval,
+        "limit": LIMIT
+    }
+    try:
+        r = requests.get(url, params=params, headers=HEADERS, timeout=20)
+        if r.status_code != 200:
+            return None
+
+        data = r.json().get("data", [])
+        if not isinstance(data, list) or len(data) < 210:
+            return None
+
+        df = pd.DataFrame(data)
+        df = df[["open", "high", "low", "close", "volume"]].astype(float)
+        df = df.iloc[::-1].reset_index(drop=True)  # قدیمی → جدید
+        return df
+    except Exception as e:
+        print(f"Error {symbol} {interval}: {e}")
+        return None
+
+# ==================== توابع استراتژی (مطابق Pine) ====================
+def rma(series, length):
+    return series.ewm(alpha=1/length, adjust=False).mean()
+
+def smoothrng(x, t=100, m=3.0):
+    avrng = (x - x.shift(1)).abs().ewm(span=t, adjust=False).mean()
+    wper = t * 2 - 1
+    return avrng.ewm(span=wper, adjust=False).mean() * m
+
+def rngfilt(price, rng):
+    filt = np.zeros(len(price))
+    filt[0] = price.iloc[0]
+    for i in range(1, len(price)):
+        if price.iloc[i] > filt[i - 1]:
+            filt[i] = max(filt[i - 1], price.iloc[i] - rng.iloc[i])
+        else:
+            filt[i] = min(filt[i - 1], price.iloc[i] + rng.iloc[i])
+    return pd.Series(filt, index=price.index)
+
+def signal(df):
+    if df is None or len(df) < 210:
+        return None, None
+
+    src = df["close"]
+    rma200 = rma(src, 200)
+    smrng = smoothrng(src, 100, 3.0)
+    filt = rngfilt(src, smrng)
+
+    # جلوگیری از ری‌پینت (فقط کندل‌های بسته‌شده)
+    if (pd.isna(filt.iloc[-2]) or pd.isna(rma200.iloc[-2]) or
+        pd.isna(filt.iloc[-3]) or pd.isna(rma200.iloc[-3])):
+        return None, None
+
+    # کراس صعودی → BUY
+    buy = (filt.iloc[-3] < rma200.iloc[-3]) and (filt.iloc[-2] > rma200.iloc[-2])
+
+    # کراس نزولی → SELL
+    sell = (filt.iloc[-3] > rma200.iloc[-3]) and (filt.iloc[-2] < rma200.iloc[-2])
+
+    if buy:
+        return "BUY", float(df["close"].iloc[-2])
+    if sell:
+        return "SELL", float(df["close"].iloc[-2])
+
+    return None, None
+
+def main():
+    symbols = get_top_symbols(300)
+    if not symbols:
+        print("❌ هیچ نمادی پیدا نشد")
+        return
+
+    print(f"🔍 شروع اسکن روی {len(symbols)} نماد | تایم‌فریم: ۱۵ دقیقه | صرافی: BingX")
+    sent = set()
+
+    for symbol in symbols:
+        for interval in INTERVALS:
+            try:
+                df = get_klines(symbol, interval)
+                if df is None or df.empty:
+                    continue
+
+                sig, price = signal(df)
+                if sig is None:
+                    continue
+
+                key = f"{symbol}_{interval}_{sig}"
+                if key in sent:
+                    continue
+
+                sent.add(key)
+
+                price = round(price, 6 if price < 1 else 4)
+                emoji = "🟢" if sig == "BUY" else "🔴"
+
+                msg = (
+                    f"{emoji} <b>سیگنال {sig}</b>\n\n"
+                    f"📌 <b>{symbol}</b>\n"
+                    f"⏰ تایم‌فریم: <b>{interval}</b>\n"
+                    f"💰 قیمت: <b>{price}</b>\n\n"
+                    f"📡 صرافی: BingX\n"
+                    f"📊 استراتژی: Range Filter + RMA ۲۰۰"
+                )
+                send_telegram(msg)
+                print(f"✅ {symbol} | {interval} → {sig} @ {price}")
+                time.sleep(0.25)
+
+            except Exception as e:
+                print(f"❌ {symbol} {interval} ERROR: {e}")
+
+    print("🏁 اسکن تمام شد")
+
+if __name__ == "__main__":
+    main()
