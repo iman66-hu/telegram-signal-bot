@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 
 # ==================== تنظیمات ====================
-BOT_TOKEN = "8848229995:AAGPTk8rByw96JDp2cdU_EnE8ihWUf5v4rE"
+BOT_TOKEN = "YOUR_NEW_BOT_TOKEN"          # ← توکن جدید بگذار
 CHAT_ID = "8430812593"
 INTERVALS = ["5m", "15m", "30m"]
 LIMIT = 300
@@ -27,14 +27,12 @@ def get_top_symbols(n=300):
     try:
         r = requests.get("https://open-api.bingx.com/openApi/swap/v2/quote/ticker", headers=HEADERS, timeout=20)
         data = r.json().get("data", [])
-      
         usdt_pairs = [
             item for item in data
             if item["symbol"].endswith("-USDT")
             and not item["symbol"].startswith("NC")
             and float(item.get("quoteVolume", 0)) > 0
         ]
-      
         usdt_pairs.sort(key=lambda x: float(x["quoteVolume"]), reverse=True)
         symbols = [item["symbol"] for item in usdt_pairs[:n]]
         print(f"✅ {len(symbols)} نماد برتر از BingX بارگذاری شد")
@@ -54,11 +52,9 @@ def get_klines(symbol, interval):
         r = requests.get(url, params=params, headers=HEADERS, timeout=20)
         if r.status_code != 200:
             return None
-      
         data = r.json().get("data", [])
         if not isinstance(data, list) or len(data) < 210:
             return None
-      
         df = pd.DataFrame(data)
         df = df[["open", "high", "low", "close", "volume"]].astype(float)
         df = df.iloc[::-1].reset_index(drop=True)  # قدیمی → جدید
@@ -80,13 +76,15 @@ def rngfilt(price, rng):
     filt = np.zeros(len(price))
     filt[0] = price.iloc[0]
     for i in range(1, len(price)):
-        if price.iloc[i] > filt[i - 1]:
-            filt[i] = max(filt[i - 1], price.iloc[i] - rng.iloc[i])
+        prev = filt[i - 1]
+        if price.iloc[i] > prev:
+            filt[i] = max(prev, price.iloc[i] - rng.iloc[i])
         else:
-            filt[i] = min(filt[i - 1], price.iloc[i] + rng.iloc[i])
+            filt[i] = min(prev, price.iloc[i] + rng.iloc[i])
     return pd.Series(filt, index=price.index)
 
 def signal(df):
+    """فقط سیگنال خرید لانگ (مطابق crossover در Pine)"""
     if df is None or len(df) < 210:
         return None, None
 
@@ -95,17 +93,15 @@ def signal(df):
     smrng = smoothrng(src, 100, 3.0)
     filt = rngfilt(src, smrng)
 
-    # چک کردن فقط روی کندل‌های بسته‌شده (بدون رِپینت)
     if (pd.isna(filt.iloc[-2]) or pd.isna(rma200.iloc[-2]) or
         pd.isna(filt.iloc[-3]) or pd.isna(rma200.iloc[-3])):
         return None, None
 
     # کراس صعودی دقیقاً روی آخرین کندل بسته‌شده
-    buy = (filt.iloc[-3] < rma200.iloc[-3]) and (filt.iloc[-2] > rma200.iloc[-2])
+    buy = (filt.iloc[-3] <= rma200.iloc[-3]) and (filt.iloc[-2] > rma200.iloc[-2])
 
     if buy:
         return "BUY", float(df["close"].iloc[-2])
-
     return None, None
 
 def main():
@@ -131,12 +127,11 @@ def main():
                 key = f"{symbol}_{interval}_{sig}"
                 if key in sent:
                     continue
-
                 sent.add(key)
 
                 price = round(price, 6)
                 msg = (
-                    f"🚨 <b>{sig} SIGNAL</b>\n\n"
+                    f"🟢 <b>BUY LONG SIGNAL</b>\n\n"
                     f"📌 <b>{symbol}</b>\n"
                     f"⏰ Timeframe: {interval}\n"
                     f"💰 Price: <b>{price}</b>\n\n"
@@ -145,7 +140,6 @@ def main():
                 send_telegram(msg)
                 print(f"✅ {symbol} | {interval} → {sig} @ {price}")
                 time.sleep(0.3)
-
             except Exception as e:
                 print(f"❌ {symbol} {interval} ERROR: {e}")
 
