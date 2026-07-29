@@ -6,7 +6,7 @@ import numpy as np
 # ==================== تنظیمات ====================
 BOT_TOKEN = "8848229995:AAGPTk8rByw96JDp2cdU_EnE8ihWUf5v4rE"
 CHAT_ID = "8430812593"
-INTERVALS = ["5m", "15m", "30m"]
+INTERVALS = ["15m"]          # فقط تایم ۱۵ دقیقه
 LIMIT = 300
 # ================================================
 
@@ -67,11 +67,11 @@ def get_klines(symbol, interval):
         print(f"Error {symbol} {interval}: {e}")
         return None
 
-# ==================== توابع استراتژی (منطق دقیق پاین) ====================
+# ==================== استراتژی بهینه‌شده ۱۵ دقیقه ====================
 def rma(series, length):
     return series.ewm(alpha=1/length, adjust=False).mean()
 
-def smoothrng(x, t=100, m=3.0):
+def smoothrng(x, t=70, m=2.8):
     avrng = (x - x.shift(1)).abs().ewm(span=t, adjust=False).mean()
     wper = t * 2 - 1
     return avrng.ewm(span=wper, adjust=False).mean() * m
@@ -91,18 +91,18 @@ def signal(df):
         return None, None
 
     src = df["close"]
-    rma200 = rma(src, 200)
-    smrng = smoothrng(src, 100, 3.0)
+    rma150 = rma(src, 150)          # بهینه‌شده برای ۱۵m
+    smrng = smoothrng(src, 70, 2.8) # پارامترهای ۱۵m
     filt = rngfilt(src, smrng)
 
-    # فقط روی کندل‌های بسته‌شده (بدون رپینت)
-    if (pd.isna(filt.iloc[-2]) or pd.isna(rma200.iloc[-2]) or
-        pd.isna(filt.iloc[-3]) or pd.isna(rma200.iloc[-3])):
+    # فقط روی کندل بسته‌شده (بدون رپینت)
+    if (pd.isna(filt.iloc[-2]) or pd.isna(rma150.iloc[-2]) or
+        pd.isna(filt.iloc[-3]) or pd.isna(rma150.iloc[-3])):
         return None, None
 
-    # کراس صعودی و نزولی دقیقاً مثل پاین
-    buy  = (filt.iloc[-3] < rma200.iloc[-3]) and (filt.iloc[-2] > rma200.iloc[-2])
-    sell = (filt.iloc[-3] > rma200.iloc[-3]) and (filt.iloc[-2] < rma200.iloc[-2])
+    # کراس دقیقاً مطابق پاین
+    buy  = (filt.iloc[-3] < rma150.iloc[-3]) and (filt.iloc[-2] > rma150.iloc[-2])
+    sell = (filt.iloc[-3] > rma150.iloc[-3]) and (filt.iloc[-2] < rma150.iloc[-2])
 
     if buy:
         return "BUY", float(df["close"].iloc[-2])
@@ -117,7 +117,7 @@ def main():
         print("❌ هیچ نمادی پیدا نشد")
         return
 
-    print(f"🔍 Starting scan on {len(symbols)} symbols | TFs: {INTERVALS} | BingX")
+    print(f"🔍 Starting scan on {len(symbols)} symbols | TF: 15m | BingX")
     sent = set()
 
     for symbol in symbols:
@@ -142,7 +142,7 @@ def main():
                     f"📌 <b>{symbol}</b>\n"
                     f"⏰ Timeframe: {interval}\n"
                     f"💰 Price: <b>{price}</b>\n\n"
-                    f"📡 Exchange: BingX | Strategy: Range Filter + RMA200"
+                    f"📡 Exchange: BingX | Strategy: Range Filter + RMA150 (15m Optimized)"
                 )
                 send_telegram(msg)
                 print(f"✅ {symbol} | {interval} → {sig} @ {price}")
